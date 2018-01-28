@@ -6,20 +6,25 @@ namespace Joy
     public abstract class Game
     {
 		SKPoint? lastTouchPoint;
-        SKSize paintingSize;
-
-        public SKSize PaintingSize { get => paintingSize; set => paintingSize = value; }
+        float width;
+        float height;
 
         public SKCanvas NativeCanvas { get; internal set; }
 
-        public Game()
-        {
-            paintingSize = SKSize.Empty;
-        }
+        public float Width => width;
 
+        public float Height => height;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="T:Joy.Game"/> class. <paramref name="width"/> and 
+        /// <paramref name="height"/> fix the final resolution, stretching in to fit it.
+        /// </summary>
+        /// <param name="width">Width.</param>
+        /// <param name="height">Height.</param>
         public Game(int width, int height)
         {
-            paintingSize = new SKSize(width, height);
+            this.width = width;
+            this.height = height;
         }
 
         public abstract void Load();
@@ -50,14 +55,14 @@ namespace Joy
             return image;
         }
 
-        public void Paint(JImage image, int x, int y)
+        public void Paint(JImage image, float x, float y)
         {
             var nativeImage = image.NativeImage;
             var sourceRect = new SKRect(0, 0, nativeImage.Width, nativeImage.Height);
             var canvas = NativeCanvas;
-            var scaledWidth = canvas.DeviceClipBounds.Width / paintingSize.Width;
-            var scaledHeight = canvas.DeviceClipBounds.Height / paintingSize.Height;
-            var destRect = SKRect.Create(x * scaledWidth, y * scaledHeight,
+            var scaledWidth = canvas.DeviceClipBounds.Width / width;
+            var scaledHeight = canvas.DeviceClipBounds.Height / height;
+            var destRect = SKRect.Create((int)x * scaledWidth, (int)y * scaledHeight,
                                          nativeImage.Width * scaledWidth, nativeImage.Height * scaledHeight);
             canvas.DrawImage(nativeImage, sourceRect, destRect);
         }

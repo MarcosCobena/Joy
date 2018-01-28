@@ -7,8 +7,7 @@ namespace Joy
     public class GameView : SKCanvasView
     {
 		Game game;
-        bool gatherPaintingSize;
-        bool isFirstPaint = true;
+		SKSize gameSize;
         DateTime previousThinkCallDateTime;
 
         public GameView()
@@ -20,13 +19,9 @@ namespace Joy
         {
             this.game = game;
 
-            if (game.PaintingSize == SKSize.Empty)
-            {
-                gatherPaintingSize = true;
-            }
-
             game.Load();
             previousThinkCallDateTime = DateTime.Now;
+            gameSize = new SKSize(game.Width, game.Height);
         }
 
         protected override void OnPaintSurface(SKPaintSurfaceEventArgs e)
@@ -40,19 +35,7 @@ namespace Joy
             game.ClearLastTouchPoint();
 
             game.NativeCanvas = e.Surface.Canvas;
-
-            if (isFirstPaint)
-            {
-                if (gatherPaintingSize)
-                {
-                    game.PaintingSize = e.Info.Size;
-                }
-
-                isFirstPaint = false;
-            }
-
             game.Paint();
-
             InvalidateSurface();
         }
 
@@ -60,7 +43,7 @@ namespace Joy
         {
             base.OnTouch(e);
 
-            var virtualPoint = e.Location.ToVirtual(CanvasSize, game.PaintingSize);
+            var virtualPoint = e.Location.ToVirtual(CanvasSize, gameSize);
             game.PromoteTouchAt(virtualPoint);
         }
     }
