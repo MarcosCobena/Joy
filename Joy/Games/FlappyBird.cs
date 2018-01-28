@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using SkiaSharp;
 
 namespace Joy
 {
-    // TODO w & h could be exposed without PaintingSize to shorten it up
     public class FlappyBird : Game
     {
         public static float OnePixelPerMillisecondSpeed;
@@ -11,45 +12,55 @@ namespace Joy
         JImage bird;
         float birdX, birdY, birdYSpeed;
         SKRect fullScreen;
-        Wall wall;
+        List<Wall> walls;
 
         public FlappyBird() : base(32, 32)
         {
-            OnePixelPerMillisecondSpeed = PaintingSize.Width / (60 * 1000);
+            OnePixelPerMillisecondSpeed = Width / (60 * 1000);
 
-            wall = new Wall(this);
+            walls = new List<Wall>(5);
         }
 
         public override void Load()
         {
             bird = LoadImage("1pxBlack.png");
-            birdX = PaintingSize.Width / 2;
+            birdX = Width / 2;
             birdY = 0;
             birdYSpeed = 0;
 
-            fullScreen = SKRect.Create(PaintingSize);
+            fullScreen = SKRect.Create(Width, Height);
 
-            wall.Load();
+            walls.Clear();
+
+            for (int i = 0; i < walls.Capacity; i++)
+            {
+                var wall = new Wall(this, 10 * i);
+                wall.Load();
+                walls.Add(wall);
+            }
         }
 
 		public override void Think(TimeSpan timeSincePreviousCall)
 		{
-            wall.Think(timeSincePreviousCall);
-
             if (birdY < 0)
             {
                 birdY = 0;
                 birdYSpeed = 0;
             }
-            else if (wall.Touches(birdX, birdY) || birdY >= PaintingSize.Height)
+            else if (walls.Any(wall => wall.Touches(birdX, birdY)) || birdY >= Height)
             {
                 Load();
                 return;
             }
 
+            foreach (var wall in walls)
+            {
+                wall.Think(timeSincePreviousCall);
+            }
+
             if (DetectsTouchAt(fullScreen))
             {
-                birdYSpeed = -OnePixelPerMillisecondSpeed * 1.5f * PaintingSize.Width;
+                birdYSpeed = -OnePixelPerMillisecondSpeed * 1.5f * Width;
             }
 
             birdY += birdYSpeed * timeSincePreviousCall.Milliseconds;
@@ -60,58 +71,70 @@ namespace Joy
         {
             Erase(SKColors.White);
 
-            wall.Paint();
-            Paint(bird, (int)birdX, (int)birdY);
+            foreach (var wall in walls)
+            {
+                wall.Paint();
+            }
+
+            Paint(bird, birdX, birdY);
         }
 
         class Wall
         {
-            const int GapHeight = 5;
+            const int GapHeight = 10;
+            const string WallFilename = "Wall.png";
 
-			readonly Game game;
+            readonly Game game;
+			readonly int xOffset;
 
             JImage bottomWall, topWall;
             float bottomWallY, topWallY, wallsX;
             Random random;
 
-            public Wall(Game game)
+            public Wall(Game game, int xOffset)
             {
                 this.game = game;
+                this.xOffset = xOffset;
             }
 
             internal bool Touches(float x, float y)
 			{
-                if (x >= wallsX - 1)
+                var distanceBetweenXAndWallsX = (int)Math.Floor(wallsX) - (int)Math.Floor(x);
+                bool doesBirdTouchWall;
+
+                if (distanceBetweenXAndWallsX == 1 && (y < topWallY + topWall.NativeImage.Height || y > bottomWallY))
                 {
-                    return true;
+                    doesBirdTouchWall = true;
                 }
                 else
                 {
-                    return false;
+                    doesBirdTouchWall = false;
                 }
+
+                return doesBirdTouchWall;
 			}
 
             internal void Load()
             {
-                bottomWall = game.LoadImage("Wall.png");
-                topWall = game.LoadImage("Wall.png");
+                bottomWall = game.LoadImage(WallFilename);
+                topWall = game.LoadImage(WallFilename);
 
-                wallsX = game.PaintingSize.Width;
+                wallsX = game.Width + xOffset;
                 random = new Random();
-                var halfScreenHeight = (int)Math.Round(game.PaintingSize.Height / 2);
-                bottomWallY = random.Next(-halfScreenHeight - GapHeight, -halfScreenHeight + GapHeight + 1);
-                topWallY = bottomWallY + bottomWall.NativeImage.Height + GapHeight;
+                var halfScreenHeight = (int)Math.Round(game.Height / 2);
+                topWallY = random.Next(-halfScreenHeight - GapHeight, -halfScreenHeight + GapHeight + 1);
+                bottomWallY = topWallY + topWall.NativeImage.Height + GapHeight;
             }
 
             internal void Think(TimeSpan timeSincePreviousCall)
             {
-                wallsX -= 3 * OnePixelPerMillisecondSpeed * timeSincePreviousCall.Milliseconds;
+                wallsX -= 5 * OnePixelPerMillisecondSpeed * timeSincePreviousCall.Milliseconds;
             }
             
             internal void Paint()
             {
-                game.Paint(topWall, (int)wallsX, (int)topWallY);
-                game.Paint(bottomWall, (int)wallsX, (int)bottomWallY);
+                game.Paint(topWall, wallsX, topWallY);
+                game.Paint(bottomWall, wallsX, bottomWallY);
             }
         }
     }
